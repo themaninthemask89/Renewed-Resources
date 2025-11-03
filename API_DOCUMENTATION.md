@@ -27,17 +27,23 @@ Check if the API is running.
 ### Get All Jobs
 **GET** `/api/jobs`
 
-Retrieve all active job listings with optional filters.
+Retrieve all active job listings with optional filters. **By default, only returns approved jobs** unless `status` parameter is specified.
 
 **Query Parameters:**
 - `felony_friendly` (optional): Filter for felony-friendly jobs. Set to `true` to show only felony-friendly jobs.
 - `location` (optional): Filter jobs by location. Partial matching supported (e.g., "Austin" will match "Austin, TX").
 - `job_type` (optional): Filter by job type (e.g., "Full-time", "Part-time").
 - `search` (optional): Search across job title, company name, and description.
+- `status` (optional): Filter by approval status ("pending", "approved", "rejected"). Defaults to "approved".
+- `min_salary` (optional): Minimum salary filter (numeric value, e.g., 15 for $15/hour or 50000 for $50k/year).
+- `max_salary` (optional): Maximum salary filter (numeric value).
+- `posted_after` (optional): Show jobs posted after this date (format: YYYY-MM-DD).
+- `sort_by` (optional): Sort results by field ("created_at", "title", "company", "view_count"). Default: "created_at".
+- `sort_order` (optional): Sort direction ("asc" or "desc"). Default: "desc".
 
 **Examples:**
 ```bash
-# Get all jobs
+# Get all approved jobs (default)
 GET /api/jobs
 
 # Get only felony-friendly jobs
@@ -49,8 +55,23 @@ GET /api/jobs?location=Austin
 # Search for "warehouse" jobs
 GET /api/jobs?search=warehouse
 
-# Combine filters: felony-friendly jobs in Dallas
-GET /api/jobs?felony_friendly=true&location=Dallas
+# Get jobs with salary $16/hour or higher
+GET /api/jobs?min_salary=16
+
+# Get jobs with salary between $50k-70k/year
+GET /api/jobs?min_salary=50000&max_salary=70000
+
+# Get jobs posted in the last week
+GET /api/jobs?posted_after=2025-10-27
+
+# Get pending jobs (admin use)
+GET /api/jobs?status=pending
+
+# Sort by most viewed jobs
+GET /api/jobs?sort_by=view_count&sort_order=desc
+
+# Combine filters: felony-friendly jobs in Dallas with $15+ salary
+GET /api/jobs?felony_friendly=true&location=Dallas&min_salary=15
 ```
 
 **Response:**
@@ -69,7 +90,9 @@ GET /api/jobs?felony_friendly=true&location=Dallas
     "contact_email": "jobs@secondchancelogistics.com",
     "contact_phone": null,
     "application_url": "https://example.com/apply",
-    "created_at": "2025-11-02 15:41:39"
+    "created_at": "2025-11-02 15:41:39",
+    "status": "approved",
+    "view_count": 42
   }
 ]
 ```
@@ -79,7 +102,7 @@ GET /api/jobs?felony_friendly=true&location=Dallas
 ### Get Single Job
 **GET** `/api/jobs/{job_id}`
 
-Retrieve details for a specific job.
+Retrieve details for a specific job. **Automatically increments the view_count for analytics tracking.**
 
 **Example:**
 ```bash
@@ -101,7 +124,9 @@ GET /api/jobs/1
   "contact_email": "jobs@secondchancelogistics.com",
   "contact_phone": null,
   "application_url": "https://example.com/apply",
-  "created_at": "2025-11-02 15:41:39"
+  "created_at": "2025-11-02 15:41:39",
+  "status": "approved",
+  "view_count": 43
 }
 ```
 
@@ -117,7 +142,7 @@ GET /api/jobs/1
 ### Create New Job
 **POST** `/api/jobs`
 
-Create a new job listing.
+Create a new job listing. **Jobs are created with "pending" status by default** and require admin approval.
 
 **Required Fields:**
 - `title` (string): Job title
@@ -133,6 +158,7 @@ Create a new job listing.
 - `contact_email` (string): Contact email
 - `contact_phone` (string): Contact phone number
 - `application_url` (string): URL to apply
+- `employer_id` (integer): Link to verified employer profile
 
 **Example Request:**
 ```bash
@@ -227,6 +253,196 @@ DELETE /api/jobs/1
 
 ---
 
+### Approve Job
+**POST** `/api/jobs/{job_id}/approve`
+
+Approve a pending job listing (admin operation). Changes job status from "pending" to "approved".
+
+**Example:**
+```bash
+POST /api/jobs/1/approve
+```
+
+**Success Response (200):**
+```json
+{
+  "message": "Job approved successfully"
+}
+```
+
+**Error Response (404):**
+```json
+{
+  "error": "Job not found"
+}
+```
+
+---
+
+### Reject Job
+**POST** `/api/jobs/{job_id}/reject`
+
+Reject a pending job listing (admin operation). Changes job status to "rejected".
+
+**Example:**
+```bash
+POST /api/jobs/1/reject
+```
+
+**Success Response (200):**
+```json
+{
+  "message": "Job rejected successfully"
+}
+```
+
+---
+
+### Get All Employers
+**GET** `/api/employers`
+
+Retrieve all employer profiles with optional verification filter.
+
+**Query Parameters:**
+- `verified_only` (optional): Set to `true` to show only verified employers.
+
+**Examples:**
+```bash
+# Get all employers
+GET /api/employers
+
+# Get only verified employers
+GET /api/employers?verified_only=true
+```
+
+**Response:**
+```json
+[
+  {
+    "id": 1,
+    "company_name": "Second Chance Logistics",
+    "industry": "Transportation & Warehousing",
+    "location": "Dallas, TX",
+    "description": "We believe in second chances and actively hire individuals with criminal backgrounds.",
+    "contact_email": "jobs@secondchancelogistics.com",
+    "contact_phone": "(555) 123-4567",
+    "website": "https://secondchancelogistics.com",
+    "is_verified": true,
+    "verification_date": "2025-11-03 10:30:00",
+    "created_at": "2025-11-02 15:41:39"
+  }
+]
+```
+
+---
+
+### Create Employer Profile
+**POST** `/api/employers`
+
+Create a new employer profile.
+
+**Required Fields:**
+- `company_name` (string): Company name
+- `industry` (string): Industry sector
+- `location` (string): Company location
+- `description` (string): Company description
+
+**Optional Fields:**
+- `contact_email` (string): Contact email
+- `contact_phone` (string): Contact phone number
+- `website` (string): Company website URL
+
+**Example Request:**
+```bash
+POST /api/employers
+Content-Type: application/json
+
+{
+  "company_name": "New Beginnings Construction",
+  "industry": "Construction",
+  "location": "Houston, TX",
+  "description": "Construction company committed to hiring individuals with criminal backgrounds.",
+  "contact_email": "hr@newbeginnings.com",
+  "contact_phone": "(555) 987-6543",
+  "website": "https://newbeginnings.com"
+}
+```
+
+**Success Response (201):**
+```json
+{
+  "id": 2,
+  "message": "Employer created successfully"
+}
+```
+
+**Error Response (400):**
+```json
+{
+  "error": "Missing required field: company_name"
+}
+```
+
+---
+
+### Update Employer Profile
+**PUT** `/api/employers/{employer_id}`
+
+Update an existing employer profile.
+
+**Example Request:**
+```bash
+PUT /api/employers/1
+Content-Type: application/json
+
+{
+  "description": "Updated company description...",
+  "contact_phone": "(555) 111-2222"
+}
+```
+
+**Success Response (200):**
+```json
+{
+  "message": "Employer updated successfully"
+}
+```
+
+**Error Response (404):**
+```json
+{
+  "error": "Employer not found"
+}
+```
+
+---
+
+### Verify Employer
+**POST** `/api/employers/{employer_id}/verify`
+
+Mark an employer as verified (admin operation). Sets `is_verified` to true and records verification date.
+
+**Example:**
+```bash
+POST /api/employers/1/verify
+```
+
+**Success Response (200):**
+```json
+{
+  "message": "Employer verified successfully"
+}
+```
+
+**Error Response (404):**
+```json
+{
+  "error": "Employer not found"
+}
+```
+
+---
+
 ## Connecting to Frontend Builders
 
 ### Bubble.io
@@ -272,8 +488,24 @@ fetch('https://your-api-url.replit.app/api/jobs?felony_friendly=true')
 - `contact_email`: Contact email
 - `contact_phone`: Contact phone
 - `application_url`: URL to apply
+- `employer_id`: Foreign key to employers table (optional)
 - `created_at`: Timestamp when job was created
 - `is_active`: Boolean (0 or 1) for soft deletes
+- `status`: Job approval status ("pending", "approved", "rejected")
+- `view_count`: Number of times job was viewed (for analytics)
+
+### Employers Table
+- `id`: Auto-incrementing primary key
+- `company_name`: Company name (required)
+- `industry`: Industry sector (required)
+- `location`: Company location (required)
+- `description`: Company description (required)
+- `contact_email`: Contact email
+- `contact_phone`: Contact phone number
+- `website`: Company website URL
+- `is_verified`: Boolean (0 or 1) - whether employer is verified
+- `verification_date`: Timestamp when employer was verified
+- `created_at`: Timestamp when employer profile was created
 
 ---
 
@@ -282,15 +514,22 @@ fetch('https://your-api-url.replit.app/api/jobs?felony_friendly=true')
 - The API uses SQLite database (stored in `jobs.db` file)
 - To upgrade to PostgreSQL later, the code can be easily modified
 - All jobs are soft-deleted (marked inactive) rather than permanently removed
-- The database includes 5 sample felony-friendly jobs to get started
+- The database includes 5 sample felony-friendly jobs and 1 sample employer to get started
 - CORS is enabled, so you can call this API from any frontend
+- **Job approval workflow**: All new jobs default to "pending" status and require admin approval
+- **Analytics tracking**: View counts are automatically incremented when jobs are viewed
+- **Salary filtering**: Intelligently handles various salary formats including ranges and comma-separated numbers
+- **Employer verification**: Employers can be verified by admins to build trust with job seekers
 
 ---
 
 ## Next Steps
 
 1. Deploy this API on Replit to get a permanent URL
-2. Connect your chosen frontend builder to the API
-3. Add real job listings from felony-friendly employers
-4. Consider adding user authentication for job seekers and employers
-5. Add email notifications when new jobs are posted
+2. Connect your chosen frontend builder to the API (Bubble.io, Webflow, etc.)
+3. Set up an admin interface for approving/rejecting jobs and verifying employers
+4. Add real job listings from verified felony-friendly employers
+5. Monitor popular jobs using the view_count analytics
+6. Consider adding user authentication for job seekers and employers
+7. Add email notifications when new jobs are approved
+8. Build employer profiles to showcase verified felony-friendly companies
