@@ -284,12 +284,20 @@ def create_job():
     conn = get_db()
     cursor = conn.cursor()
     
+    # Validate employer_id if provided
+    employer_id = data.get('employer_id')
+    if employer_id:
+        cursor.execute('SELECT id FROM employers WHERE id = ? AND is_active = 1', (employer_id,))
+        if not cursor.fetchone():
+            conn.close()
+            return jsonify({'error': 'Invalid employer_id: employer not found'}), 400
+    
     cursor.execute('''
         INSERT INTO jobs (
             title, company, location, description, salary, job_type,
             felony_friendly, background_check_details, contact_email,
-            contact_phone, application_url, status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            contact_phone, application_url, employer_id, status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ''', (
         data['title'],
         data['company'],
@@ -302,6 +310,7 @@ def create_job():
         data.get('contact_email'),
         data.get('contact_phone'),
         data.get('application_url'),
+        employer_id,
         'pending'
     ))
     
@@ -322,13 +331,20 @@ def update_job(job_id):
         conn.close()
         return jsonify({'error': 'Job not found'}), 404
     
+    # Validate employer_id if provided
+    if 'employer_id' in data and data['employer_id'] is not None:
+        cursor.execute('SELECT id FROM employers WHERE id = ? AND is_active = 1', (data['employer_id'],))
+        if not cursor.fetchone():
+            conn.close()
+            return jsonify({'error': 'Invalid employer_id: employer not found'}), 400
+    
     fields = []
     values = []
     
     allowed_fields = [
         'title', 'company', 'location', 'description', 'salary', 'job_type',
         'felony_friendly', 'background_check_details', 'contact_email',
-        'contact_phone', 'application_url', 'is_active', 'status'
+        'contact_phone', 'application_url', 'employer_id', 'is_active', 'status'
     ]
     
     for field in allowed_fields:

@@ -37,7 +37,7 @@ Retrieve all active job listings with optional filters. **By default, only retur
 - `status` (optional): Filter by approval status ("pending", "approved", "rejected"). Defaults to "approved".
 - `min_salary` (optional): Minimum salary filter (numeric value, e.g., 15 for $15/hour or 50000 for $50k/year).
 - `max_salary` (optional): Maximum salary filter (numeric value).
-- `posted_after` (optional): Show jobs posted after this date (format: YYYY-MM-DD).
+- `days_posted` (optional): Show jobs posted within the last N days (e.g., 7 for last week, 30 for last month).
 - `sort_by` (optional): Sort results by field ("created_at", "title", "company", "view_count"). Default: "created_at".
 - `sort_order` (optional): Sort direction ("asc" or "desc"). Default: "desc".
 
@@ -61,8 +61,8 @@ GET /api/jobs?min_salary=16
 # Get jobs with salary between $50k-70k/year
 GET /api/jobs?min_salary=50000&max_salary=70000
 
-# Get jobs posted in the last week
-GET /api/jobs?posted_after=2025-10-27
+# Get jobs posted in the last 7 days
+GET /api/jobs?days_posted=7
 
 # Get pending jobs (admin use)
 GET /api/jobs?status=pending
@@ -254,13 +254,13 @@ DELETE /api/jobs/1
 ---
 
 ### Approve Job
-**POST** `/api/jobs/{job_id}/approve`
+**POST** `/api/admin/jobs/{job_id}/approve`
 
 Approve a pending job listing (admin operation). Changes job status from "pending" to "approved".
 
 **Example:**
 ```bash
-POST /api/jobs/1/approve
+POST /api/admin/jobs/1/approve
 ```
 
 **Success Response (200):**
@@ -280,13 +280,13 @@ POST /api/jobs/1/approve
 ---
 
 ### Reject Job
-**POST** `/api/jobs/{job_id}/reject`
+**POST** `/api/admin/jobs/{job_id}/reject`
 
 Reject a pending job listing (admin operation). Changes job status to "rejected".
 
 **Example:**
 ```bash
-POST /api/jobs/1/reject
+POST /api/admin/jobs/1/reject
 ```
 
 **Success Response (200):**
@@ -304,7 +304,7 @@ POST /api/jobs/1/reject
 Retrieve all employer profiles with optional verification filter.
 
 **Query Parameters:**
-- `verified_only` (optional): Set to `true` to show only verified employers.
+- `verified` (optional): Set to `true` to show only verified employers.
 
 **Examples:**
 ```bash
@@ -312,7 +312,7 @@ Retrieve all employer profiles with optional verification filter.
 GET /api/employers
 
 # Get only verified employers
-GET /api/employers?verified_only=true
+GET /api/employers?verified=true
 ```
 
 **Response:**
@@ -320,15 +320,14 @@ GET /api/employers?verified_only=true
 [
   {
     "id": 1,
-    "company_name": "Second Chance Logistics",
-    "industry": "Transportation & Warehousing",
-    "location": "Dallas, TX",
+    "name": "Second Chance Logistics",
     "description": "We believe in second chances and actively hire individuals with criminal backgrounds.",
+    "website": "https://secondchancelogistics.com",
+    "verified": true,
+    "felony_friendly": true,
+    "contact_name": "Jane Smith",
     "contact_email": "jobs@secondchancelogistics.com",
     "contact_phone": "(555) 123-4567",
-    "website": "https://secondchancelogistics.com",
-    "is_verified": true,
-    "verification_date": "2025-11-03 10:30:00",
     "created_at": "2025-11-02 15:41:39"
   }
 ]
@@ -342,15 +341,15 @@ GET /api/employers?verified_only=true
 Create a new employer profile.
 
 **Required Fields:**
-- `company_name` (string): Company name
-- `industry` (string): Industry sector
-- `location` (string): Company location
-- `description` (string): Company description
+- `name` (string): Company name
 
 **Optional Fields:**
+- `description` (string): Company description
+- `website` (string): Company website URL
+- `felony_friendly` (boolean): Whether employer is felony-friendly (defaults to true)
+- `contact_name` (string): Contact person name
 - `contact_email` (string): Contact email
 - `contact_phone` (string): Contact phone number
-- `website` (string): Company website URL
 
 **Example Request:**
 ```bash
@@ -358,10 +357,10 @@ POST /api/employers
 Content-Type: application/json
 
 {
-  "company_name": "New Beginnings Construction",
-  "industry": "Construction",
-  "location": "Houston, TX",
+  "name": "New Beginnings Construction",
   "description": "Construction company committed to hiring individuals with criminal backgrounds.",
+  "felony_friendly": true,
+  "contact_name": "John Doe",
   "contact_email": "hr@newbeginnings.com",
   "contact_phone": "(555) 987-6543",
   "website": "https://newbeginnings.com"
@@ -418,13 +417,13 @@ Content-Type: application/json
 ---
 
 ### Verify Employer
-**POST** `/api/employers/{employer_id}/verify`
+**POST** `/api/admin/employers/{employer_id}/verify`
 
-Mark an employer as verified (admin operation). Sets `is_verified` to true and records verification date.
+Mark an employer as verified (admin operation). Sets `verified` to true.
 
 **Example:**
 ```bash
-POST /api/employers/1/verify
+POST /api/admin/employers/1/verify
 ```
 
 **Success Response (200):**
@@ -496,16 +495,16 @@ fetch('https://your-api-url.replit.app/api/jobs?felony_friendly=true')
 
 ### Employers Table
 - `id`: Auto-incrementing primary key
-- `company_name`: Company name (required)
-- `industry`: Industry sector (required)
-- `location`: Company location (required)
-- `description`: Company description (required)
+- `name`: Company name (required, unique)
+- `description`: Company description
+- `website`: Company website URL
+- `verified`: Boolean (0 or 1) - whether employer is verified
+- `felony_friendly`: Boolean (0 or 1) - whether employer is felony-friendly (defaults to 1)
+- `contact_name`: Contact person name
 - `contact_email`: Contact email
 - `contact_phone`: Contact phone number
-- `website`: Company website URL
-- `is_verified`: Boolean (0 or 1) - whether employer is verified
-- `verification_date`: Timestamp when employer was verified
 - `created_at`: Timestamp when employer profile was created
+- `is_active`: Boolean (0 or 1) for soft deletes
 
 ---
 
