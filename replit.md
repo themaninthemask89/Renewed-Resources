@@ -10,12 +10,21 @@ This is a REST API backend for a job board specifically designed to help people 
 - Search functionality
 - Felony-friendly filtering
 
-## Recent Changes (November 2, 2025)
+## Recent Changes (November 3, 2025)
+- **Configured for Replit Environment**: Set up workflows, deployment, and dependencies
+- Installed Flask and Flask-CORS via Replit package manager
+- Added Gunicorn for production deployment
+- Configured deployment with autoscale strategy
+- Created .gitignore for Python project
+- Workflow running Flask dev server on port 5000
+- Database already populated with 6 sample felony-friendly jobs
+
+## Previous Changes (November 2, 2025)
 - Created Python Flask REST API with complete CRUD operations
 - Set up SQLite database with jobs schema
 - Implemented filtering by location, job type, and felony-friendly status
 - Added search functionality across title, company, and description
-- Seeded database with 5 sample felony-friendly job listings
+- Seeded database with sample felony-friendly job listings
 - Created comprehensive API documentation
 - Configured Flask server to run on port 5000
 
@@ -32,6 +41,9 @@ This is a REST API backend for a job board specifically designed to help people 
 - **Database**: SQLite (can be upgraded to PostgreSQL)
 - **API Format**: REST with JSON responses
 - **CORS**: Enabled for cross-origin requests
+- **Production Server**: Gunicorn (for deployment)
+- **Development Server**: Flask built-in (for development)
+- **Deployment**: Replit Autoscale
 
 ### File Structure
 ```
@@ -93,11 +105,21 @@ This is a REST API backend for a job board specifically designed to help people 
 ## How to Use
 
 ### Running the API
-The Flask server runs automatically via the configured workflow:
+The Flask server runs automatically via the configured workflow in development mode.
+
+**Development Mode (Current):**
 ```bash
 python app.py
 ```
-Server runs on `http://0.0.0.0:5000`
+Server runs on `http://0.0.0.0:5000` with Flask debug mode enabled.
+
+**Production Deployment:**
+When deployed on Replit, the API automatically uses Gunicorn:
+```bash
+gunicorn --bind=0.0.0.0:5000 --reuse-port app:app
+```
+
+The API is accessible at your Replit deployment URL after publishing.
 
 ### Adding Sample Data
 ```bash
